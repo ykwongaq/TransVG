@@ -9,15 +9,20 @@ from .data_loader import TransVGDataset
 
 def make_transforms(args, image_set, is_onestage=False):
     if is_onestage:
-        normalize = Compose([
-            ToTensor(),
-            Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-        ])
+        normalize = Compose(
+            [ToTensor(), Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]
+        )
         return normalize
 
     imsize = args.imsize
 
-    if image_set == 'train':
+    # if image_set == 'train':
+    if image_set in [
+        "train",
+        "intra_class_train_no_negative",
+        "class_level_train_no_negative",
+        "inter_class_train_no_negative",
+    ]:
         scales = []
         if args.aug_scale:
             for i in range(7):
@@ -28,40 +33,58 @@ def make_transforms(args, image_set, is_onestage=False):
         if args.aug_crop:
             crop_prob = 0.5
         else:
-            crop_prob = 0.
-    
-        return T.Compose([
-            T.RandomSelect(
-                T.RandomResize(scales),
-                T.Compose([
-                    T.RandomResize([400, 500, 600], with_long_side=False),
-                    T.RandomSizeCrop(384, 600),
+            crop_prob = 0.0
+
+        return T.Compose(
+            [
+                T.RandomSelect(
                     T.RandomResize(scales),
-                ]),
-                p=crop_prob
-            ),
-            T.ColorJitter(0.4, 0.4, 0.4),
-            T.GaussianBlur(aug_blur=args.aug_blur),
-            T.RandomHorizontalFlip(),
-            T.ToTensor(),
-            T.NormalizeAndPad(size=imsize, aug_translate=args.aug_translate)
-        ])
+                    T.Compose(
+                        [
+                            T.RandomResize([400, 500, 600], with_long_side=False),
+                            T.RandomSizeCrop(384, 600),
+                            T.RandomResize(scales),
+                        ]
+                    ),
+                    p=crop_prob,
+                ),
+                T.ColorJitter(0.4, 0.4, 0.4),
+                T.GaussianBlur(aug_blur=args.aug_blur),
+                T.RandomHorizontalFlip(),
+                T.ToTensor(),
+                T.NormalizeAndPad(size=imsize, aug_translate=args.aug_translate),
+            ]
+        )
 
+    if image_set in [
+        "val",
+        "test",
+        "testA",
+        "testB",
+        "intra_class_val_seen_no_negative",
+        "class_level_val_unseen_no_negative",
+        "intra_class_val_unseen_no_negative",
+        "class_level_val_seen_no_negative",
+        "inter_class_val_unseen_no_negative",
+        "inter_class_val_seen_no_negative",
+    ]:
+        return T.Compose(
+            [
+                T.RandomResize([imsize]),
+                T.ToTensor(),
+                T.NormalizeAndPad(size=imsize),
+            ]
+        )
 
-    if image_set in ['val', 'test', 'testA', 'testB']:
-        return T.Compose([
-            T.RandomResize([imsize]),
-            T.ToTensor(),
-            T.NormalizeAndPad(size=imsize),
-        ])
-
-    raise ValueError(f'unknown {image_set}')
+    raise ValueError(f"unknown {image_set}")
 
 
 def build_dataset(split, args):
-    return TransVGDataset(data_root=args.data_root,
-                        split_root=args.split_root,
-                        dataset=args.dataset,
-                        split=split,
-                        transform=make_transforms(args, split),
-                        max_query_len=args.max_query_len)
+    return TransVGDataset(
+        data_root=args.data_root,
+        split_root=args.split_root,
+        dataset=args.dataset,
+        split=split,
+        transform=make_transforms(args, split),
+        max_query_len=args.max_query_len,
+    )

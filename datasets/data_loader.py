@@ -10,6 +10,7 @@ https://github.com/chenxi116/TF-phrasecut-public/blob/master/build_batches.py
 
 import os
 import re
+
 # import cv2
 import sys
 import json
@@ -18,7 +19,8 @@ import numpy as np
 import os.path as osp
 import scipy.io as sio
 import torch.utils.data as data
-sys.path.append('.')
+
+sys.path.append(".")
 
 from PIL import Image
 from pytorch_pretrained_bert.tokenization import BertTokenizer
@@ -29,7 +31,7 @@ def read_examples(input_line, unique_id):
     """Read a list of `InputExample`s from an input file."""
     examples = []
     # unique_id = 0
-    line = input_line #reader.readline()
+    line = input_line  # reader.readline()
     # if not line:
     #     break
     line = line.strip()
@@ -41,10 +43,10 @@ def read_examples(input_line, unique_id):
     else:
         text_a = m.group(1)
         text_b = m.group(2)
-    examples.append(
-        InputExample(unique_id=unique_id, text_a=text_a, text_b=text_b))
+    examples.append(InputExample(unique_id=unique_id, text_a=text_a, text_b=text_b))
     # unique_id += 1
     return examples
+
 
 ## Bert text encoding
 class InputExample(object):
@@ -53,8 +55,10 @@ class InputExample(object):
         self.text_a = text_a
         self.text_b = text_b
 
+
 class InputFeatures(object):
     """A single set of features of data."""
+
     def __init__(self, unique_id, tokens, input_ids, input_mask, input_type_ids):
         self.unique_id = unique_id
         self.tokens = tokens
@@ -62,10 +66,11 @@ class InputFeatures(object):
         self.input_mask = input_mask
         self.input_type_ids = input_type_ids
 
+
 def convert_examples_to_features(examples, seq_length, tokenizer):
     """Loads a data file into a list of `InputBatch`s."""
     features = []
-    for (ex_index, example) in enumerate(examples):
+    for ex_index, example in enumerate(examples):
         tokens_a = tokenizer.tokenize(example.text_a)
 
         tokens_b = None
@@ -80,7 +85,7 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
         else:
             # Account for [CLS] and [SEP] with "- 2"
             if len(tokens_a) > seq_length - 2:
-                tokens_a = tokens_a[0:(seq_length - 2)]
+                tokens_a = tokens_a[0 : (seq_length - 2)]
         tokens = []
         input_type_ids = []
         tokens.append("[CLS]")
@@ -119,39 +124,64 @@ def convert_examples_to_features(examples, seq_length, tokenizer):
                 tokens=tokens,
                 input_ids=input_ids,
                 input_mask=input_mask,
-                input_type_ids=input_type_ids))
+                input_type_ids=input_type_ids,
+            )
+        )
     return features
+
 
 class DatasetNotFoundError(Exception):
     pass
 
+
 class TransVGDataset(data.Dataset):
     SUPPORTED_DATASETS = {
-        'referit': {'splits': ('train', 'val', 'trainval', 'test')},
-        'unc': {
-            'splits': ('train', 'val', 'trainval', 'testA', 'testB'),
-            'params': {'dataset': 'refcoco', 'split_by': 'unc'}
+        "referit": {"splits": ("train", "val", "trainval", "test")},
+        "unc": {
+            "splits": ("train", "val", "trainval", "testA", "testB"),
+            "params": {"dataset": "refcoco", "split_by": "unc"},
         },
-        'unc+': {
-            'splits': ('train', 'val', 'trainval', 'testA', 'testB'),
-            'params': {'dataset': 'refcoco+', 'split_by': 'unc'}
+        "unc+": {
+            "splits": ("train", "val", "trainval", "testA", "testB"),
+            "params": {"dataset": "refcoco+", "split_by": "unc"},
         },
-        'gref': {
-            'splits': ('train', 'val'),
-            'params': {'dataset': 'refcocog', 'split_by': 'google'}
+        "gref": {
+            "splits": ("train", "val"),
+            "params": {"dataset": "refcocog", "split_by": "google"},
         },
-        'gref_umd': {
-            'splits': ('train', 'val', 'test'),
-            'params': {'dataset': 'refcocog', 'split_by': 'umd'}
+        "gref_umd": {
+            "splits": ("train", "val", "test"),
+            "params": {"dataset": "refcocog", "split_by": "umd"},
         },
-        'flickr': {
-            'splits': ('train', 'val', 'test')}
+        "flickr": {"splits": ("train", "val", "test")},
+        "marinedet": {
+            "splits": (
+                "intra_class_val_seen_no_negative",
+                "class_level_val_unseen_no_negative",
+                "intra_class_val_unseen_no_negative",
+                "intra_class_train_no_negative",
+                "class_level_val_seen_no_negative",
+                "class_level_train_no_negative",
+                "inter_class_val_unseen_no_negative",
+                "inter_class_train_no_negative",
+                "inter_class_val_seen_no_negative",
+            )
+        },
     }
 
-    def __init__(self, data_root, split_root='data', dataset='referit', 
-                 transform=None, return_idx=False, testmode=False,
-                 split='train', max_query_len=128, lstm=False, 
-                 bert_model='bert-base-uncased'):
+    def __init__(
+        self,
+        data_root,
+        split_root="data",
+        dataset="referit",
+        transform=None,
+        return_idx=False,
+        testmode=False,
+        split="train",
+        max_query_len=128,
+        lstm=False,
+        bert_model="bert-base-uncased",
+    ):
         self.images = []
         self.data_root = data_root
         self.split_root = split_root
@@ -162,52 +192,58 @@ class TransVGDataset(data.Dataset):
         self.testmode = testmode
         self.split = split
         self.tokenizer = BertTokenizer.from_pretrained(bert_model, do_lower_case=True)
-        self.return_idx=return_idx
+        self.return_idx = return_idx
 
         assert self.transform is not None
 
-        if split == 'train':
+        if split == "train":
             self.augment = True
         else:
             self.augment = False
 
-        if self.dataset == 'referit':
-            self.dataset_root = osp.join(self.data_root, 'referit')
-            self.im_dir = osp.join(self.dataset_root, 'images')
-            self.split_dir = osp.join(self.dataset_root, 'splits')
-        elif  self.dataset == 'flickr':
-            self.dataset_root = osp.join(self.data_root, 'Flickr30k')
-            self.im_dir = osp.join(self.dataset_root, 'flickr30k_images')
-        else:   ## refcoco, etc.
-            self.dataset_root = osp.join(self.data_root, 'other')
+        if self.dataset == "referit":
+            self.dataset_root = osp.join(self.data_root, "referit")
+            self.im_dir = osp.join(self.dataset_root, "images")
+            self.split_dir = osp.join(self.dataset_root, "splits")
+        elif self.dataset == "flickr":
+            self.dataset_root = osp.join(self.data_root, "Flickr30k")
+            self.im_dir = osp.join(self.dataset_root, "flickr30k_images")
+        elif self.dataset == "marinedet":
+            self.dataset_root = osp.join(self.data_root, "marinedet")
+            self.im_dir = self.dataset_root
+        else:  ## refcoco, etc.
+            self.dataset_root = osp.join(self.data_root, "other")
             self.im_dir = osp.join(
-                self.dataset_root, 'images', 'mscoco', 'images', 'train2014')
-            self.split_dir = osp.join(self.dataset_root, 'splits')
+                self.dataset_root, "images", "mscoco", "images", "train2014"
+            )
+            self.split_dir = osp.join(self.dataset_root, "splits")
 
         if not self.exists_dataset():
             # self.process_dataset()
-            print('Please download index cache to data folder: \n \
-                https://drive.google.com/open?id=1cZI562MABLtAzM6YU4WmKPFFguuVr0lZ')
+            print(
+                "Please download index cache to data folder: \n \
+                https://drive.google.com/open?id=1cZI562MABLtAzM6YU4WmKPFFguuVr0lZ"
+            )
             exit(0)
 
         dataset_path = osp.join(self.split_root, self.dataset)
-        valid_splits = self.SUPPORTED_DATASETS[self.dataset]['splits']
+        valid_splits = self.SUPPORTED_DATASETS[self.dataset]["splits"]
 
         if self.lstm:
             self.corpus = Corpus()
-            corpus_path = osp.join(dataset_path, 'corpus.pth')
+            corpus_path = osp.join(dataset_path, "corpus.pth")
             self.corpus = torch.load(corpus_path)
 
         if split not in valid_splits:
             raise ValueError(
-                'Dataset {0} does not have split {1}'.format(
-                    self.dataset, split))
+                "Dataset {0} does not have split {1}".format(self.dataset, split)
+            )
 
         splits = [split]
-        if self.dataset != 'referit':
-            splits = ['train', 'val'] if split == 'trainval' else [split]
+        if self.dataset != "referit":
+            splits = ["train", "val"] if split == "trainval" else [split]
         for split in splits:
-            imgset_file = '{0}_{1}.pth'.format(self.dataset, split)
+            imgset_file = "{0}_{1}.pth".format(self.dataset, split)
             imgset_path = osp.join(dataset_path, imgset_file)
             self.images += torch.load(imgset_path)
 
@@ -215,14 +251,14 @@ class TransVGDataset(data.Dataset):
         return osp.exists(osp.join(self.split_root, self.dataset))
 
     def pull_item(self, idx):
-        if self.dataset == 'flickr':
+        if self.dataset == "flickr":
             img_file, bbox, phrase = self.images[idx]
         else:
             img_file, _, bbox, phrase, attri = self.images[idx]
         ## box format: to x1y1x2y2
-        if not (self.dataset == 'referit' or self.dataset == 'flickr'):
+        if not (self.dataset == "referit" or self.dataset == "flickr"):
             bbox = np.array(bbox, dtype=int)
-            bbox[2], bbox[3] = bbox[0]+bbox[2], bbox[1]+bbox[3]
+            bbox[2], bbox[3] = bbox[0] + bbox[2], bbox[1] + bbox[3]
         else:
             bbox = np.array(bbox, dtype=int)
 
@@ -237,7 +273,7 @@ class TransVGDataset(data.Dataset):
 
         bbox = torch.tensor(bbox)
         bbox = bbox.float()
-        return img, phrase, bbox 
+        return img, phrase, bbox
 
     def tokenize_phrase(self, phrase):
         return self.corpus.tokenize(phrase, self.query_len)
@@ -252,29 +288,43 @@ class TransVGDataset(data.Dataset):
         img, phrase, bbox = self.pull_item(idx)
         # phrase = phrase.decode("utf-8").encode().lower()
         phrase = phrase.lower()
-        input_dict = {'img': img, 'box': bbox, 'text': phrase}
+        input_dict = {"img": img, "box": bbox, "text": phrase}
         input_dict = self.transform(input_dict)
-        img = input_dict['img']
-        bbox = input_dict['box']
-        phrase = input_dict['text']
-        img_mask = input_dict['mask']
-        
+        img = input_dict["img"]
+        bbox = input_dict["box"]
+        phrase = input_dict["text"]
+        img_mask = input_dict["mask"]
+
         if self.lstm:
             phrase = self.tokenize_phrase(phrase)
             word_id = phrase
-            word_mask = np.array(word_id>0, dtype=int)
+            word_mask = np.array(word_id > 0, dtype=int)
         else:
             ## encode phrase to bert input
             examples = read_examples(phrase, idx)
             features = convert_examples_to_features(
-                examples=examples, seq_length=self.query_len, tokenizer=self.tokenizer)
+                examples=examples, seq_length=self.query_len, tokenizer=self.tokenizer
+            )
             word_id = features[0].input_ids
             word_mask = features[0].input_mask
-        
+
         if self.testmode:
-            return img, np.array(word_id, dtype=int), np.array(word_mask, dtype=int), \
-                np.array(bbox, dtype=np.float32), np.array(ratio, dtype=np.float32), \
-                np.array(dw, dtype=np.float32), np.array(dh, dtype=np.float32), self.images[idx][0]
+            return (
+                img,
+                np.array(word_id, dtype=int),
+                np.array(word_mask, dtype=int),
+                np.array(bbox, dtype=np.float32),
+                np.array(ratio, dtype=np.float32),
+                np.array(dw, dtype=np.float32),
+                np.array(dh, dtype=np.float32),
+                self.images[idx][0],
+            )
         else:
             # print(img.shape)
-            return img, np.array(img_mask), np.array(word_id, dtype=int), np.array(word_mask, dtype=int), np.array(bbox, dtype=np.float32)
+            return (
+                img,
+                np.array(img_mask),
+                np.array(word_id, dtype=int),
+                np.array(word_mask, dtype=int),
+                np.array(bbox, dtype=np.float32),
+            )
